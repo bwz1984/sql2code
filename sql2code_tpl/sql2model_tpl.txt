@@ -1,0 +1,13 @@
+package {{.PackageName}}
+
+// {{.Comment}}
+type {{.TblName}} struct {
+{{- range .Rows}}
+	{{.Name}} {{.GoType}} {{.Tags}} // {{.Comment}}
+{{- end}}
+}
+
+func ({{.TblName}}) TableName() string {
+	return "{{.OriginTblName}}"
+}
+

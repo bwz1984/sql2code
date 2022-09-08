@@ -1,0 +1,125 @@
+package {{.PackageName}}
+
+{{template "addTemplate" .}}
+{{template "deleteTemplate" .}}
+{{template "updateTemplate" .}}
+{{template "getMultiTemplate" .}}
+{{template "getCountTemplate" .}}
+{{template "getOneTemplate" .}}
+
+
+{{define "addTemplate"}}
+func Add{{.ModelName}}(ctx context.Context,obj *{{.ModelPackage}}.{{.ModelName}}, whereMap map[string]interface{}) (error, int64) {
+	if whereMap != nil {
+		err, existObj := GetOne{{.ModelName}}(ctx, whereMap)
+		if err != nil {
+			log.Printf("[Add{{.ModelName}}]GetOne{{.ModelName}} fail, err:%v, obj:%v", err, obj)
+			return err, int64(0)
+		}
+		if existObj != nil && existObj.AddTime > int64(0) {
+			logs.CtxInfo(ctx, "[Add{{.ModelName}}] {{.ModelName}} exist, existsObj:%v", existObj)
+			return nil, existObj.ID
+		}
+	}
+
+	if obj.AddTime <= 0 {
+		obj.AddTime = util_datetime.CurrentMS()
+	}
+	if obj.UpdateTime <= 0 {
+		obj.UpdateTime = util_datetime.CurrentMS()
+	}
+
+	res := {{.DBConect}}.Create(obj)
+	if res.Error != nil {
+		log.Printf("[Add{{.ModelName}}]Add{{.ModelName}} fail, err:%v, obj:%v", res.Error, obj)
+		return res.Error, int64(0)
+	}
+	return res.Error, obj.ID
+}
+
+{{end}}
+
+{{define "deleteTemplate"}}
+func Delete{{.ModelName}}(ctx context.Context,whereMap map[string]interface{}) (error, int64) {
+	query := db.WhereQuery({{.DBConect}}, whereMap)
+	res := query.Delete(&{{.ModelPackage}}.{{.ModelName}}{})
+	if res.Error != nil {
+		log.Printf("Delete{{.ModelName}} failed, err:%v, whereMap:%v", res.Error, whereMap)
+		return res.Error, int64(0)
+	}
+	rowsAffected := res.RowsAffected
+	return nil, rowsAffected
+}
+
+{{end}}
+
+{{define "updateTemplate"}}
+func Update{{.ModelName}}(ctx context.Context, whereMap map[string]interface{}, setMap map[string]interface{}) (error, int64) {
+	obj := &{{.ModelPackage}}.{{.ModelName}}{}
+	query := {{.DBConect}}.Model(obj)
+	query = db.WhereQuery(query, whereMap)
+	if updateTime, ok := setMap["update_time"]; !ok || updateTime.(int64) <= 0 {
+		setMap["update_time"] = util_datetime.CurrentMS()
+	}
+	res := query.Updates(setMap)
+	if res.Error != nil {
+		log.Printf("[Update{{.ModelName}}]Update{{.ModelName}} fail, err:%v, whereMap:%v, setMap:%v", res.Error, whereMap, setMap)
+		return res.Error, int64(0)
+	}
+	rowsAffected := res.RowsAffected
+	return nil, rowsAffected
+}
+
+{{end}}
+
+{{define "getMultiTemplate"}}
+func GetMulti{{.ModelName}}s(ctx context.Context,whereMap map[string]interface{}, offset, limit int64, orderBy, groupby, fields string) (error, []*{{.ModelPackage}}.{{.ModelName}}) {
+	objs := []*{{.ModelPackage}}.{{.ModelName}}{}
+	query := db.WhereQuery({{.DBConect}}, whereMap)
+	query = db.OrderByQuery(query, orderBy)
+	query = db.FieldsQuery(query, fields)
+	query = db.GroupByQuery(query, groupby)
+	query = db.LimitQuery(query, offset, limit)
+
+	res := query.Find(&objs)
+	if res.Error != nil {
+		if res.Error.Error() == "record not found" {
+			return nil, nil
+		}
+		log.Printf("[GetMulti{{.ModelName}}s]GetMulti{{.ModelName}}s fail, err:%v", res.Error)
+	}
+	return res.Error, objs
+}
+
+{{end}}
+
+{{define "getCountTemplate"}}
+func GetMulti{{.ModelName}}sCount(ctx context.Context,whereMap map[string]interface{}) (error, int64) {
+	cnt := int64(0)
+	query := db.WhereQuery({{.DBConect}}, whereMap)
+
+	res := query.Model(&{{.ModelPackage}}.{{.ModelName}}{}).Count(&cnt)
+	if res.Error != nil {
+		if res.Error.Error() == "record not found" {
+			return nil, cnt
+		}
+		log.Printf("GetMulti{{.ModelName}}sCount fail, err:%v", res.Error)
+	}
+	return res.Error, cnt
+}
+
+{{end}}
+
+{{define "getOneTemplate"}}
+func GetOne{{.ModelName}}(ctx context.Context,whereMap map[string]interface{},fields string)(error, *{{.ModelPackage}}.{{.ModelName}}) {
+	err, objs := GetMulti{{.ModelName}}s(ctx, whereMap, 0, 1, "", "", fields)
+	if err != nil {
+		return err, nil
+	}
+	if len(objs) >= 1 {
+		return nil, objs[0]
+	}
+	return nil, nil
+}
+
+{{end}}
