@@ -7,6 +7,8 @@ import (
 	"strings"
 	"text/template"
 
+	"log"
+
 	"github.com/pingcap/tidb/parser"
 	"github.com/pingcap/tidb/parser/ast"
 	"github.com/pingcap/tidb/parser/test_driver"
@@ -32,7 +34,7 @@ type ModelRow struct {
 }
 
 type ModelTable struct {
-	TblName       string
+	ModelName     string
 	OriginTblName string
 	Comment       string
 	Rows          []ModelRow
@@ -84,16 +86,18 @@ func sqlType2GoType(tp byte, flag uint) string {
 	return "string"
 }
 
-func SQLParse(sql string) (*ModelTable, error) {
+func SQLParse(sql, tablePrefix string) (*ModelTable, error) {
 	cts, err := parseCreateTableStmt(sql)
 	if err != nil {
+		log.Printf("parseCreateTableStmt fail,err:%v", err)
 		return nil, err
 	}
 	mt := &ModelTable{}
 	primaryKey := ""
 
 	// table name
-	mt.TblName = util_strings.ToCamel(cts.Table.Name.L)
+	tblName := TableNamePrefixCut(cts.Table.Name.L, tablePrefix)
+	mt.ModelName = TableName2ModelName(tblName)
 	mt.OriginTblName = cts.Table.Name.L
 
 	// primary
@@ -152,6 +156,7 @@ func SQLParse(sql string) (*ModelTable, error) {
 func modelCodeGen(modelFile *ModelFile) (string, error) {
 	tpl, err := template.ParseFiles(gModelTplPath)
 	if err != nil {
+		log.Printf("template.ParseFiles fail, err:%v path:%v", err, gModelTplPath)
 		return "", err
 	}
 	builder := strings.Builder{}
@@ -159,23 +164,63 @@ func modelCodeGen(modelFile *ModelFile) (string, error) {
 	return builder.String(), err
 }
 
-func ModelOriNameGet(sql string) (string, error) {
+func TableNamePrefixCut(name, prefix string) string {
+	tblName := name
+	if prefix != "" && strings.HasPrefix(tblName, prefix) {
+		tblName = tblName[len(prefix):]
+	}
+	return tblName
+}
+
+func TableNameGetFromSQL(sql, tablePrefix string) (string, error) {
 	cts, err := parseCreateTableStmt(sql)
 	if err != nil {
 		return "", err
 	}
-	return cts.Table.Name.L, err
+	tblName := TableNamePrefixCut(cts.Table.Name.L, tablePrefix)
+	return tblName, err
 }
 
-func SQL2Model(sql string) (string, error) {
-	modelTable, err := SQLParse(sql)
+func TableName2ModelName(tblName string) string {
+	return util_strings.ToCamel(tblName)
+}
+
+func ModelFileNameGetFromSQL(sql, tablePrefix, packagePrefix string) (string, error) {
+	cts, err := parseCreateTableStmt(sql)
 	if err != nil {
 		return "", err
 	}
+	tblName := TableNamePrefixCut(cts.Table.Name.L, tablePrefix)
+	var modelPackage string
+	if len(packagePrefix) > 0 {
+		modelPackage = packagePrefix + "_" + tblName + ".go"
+	} else {
+		modelPackage = packagePrefix + tblName + ".go"
+	}
+	return modelPackage, nil
+}
+
+func ModelPackageGet(name, tablePrefix, packagePrefix string) string {
+	tblName := TableNamePrefixCut(name, tablePrefix)
+	var modelPackage string
+	if len(packagePrefix) > 0 {
+		modelPackage = packagePrefix + "_" + tblName + "_model"
+	} else {
+		modelPackage = packagePrefix + tblName + "_model"
+	}
+	return modelPackage
+}
+
+func SQL2Model(sql, tablePrefix, packagePrefix string) (string, error) {
+	modelTable, err := SQLParse(sql, tablePrefix)
+	if err != nil {
+		log.Printf("SQLParse fail,err:%v", err)
+		return "", err
+	}
 	mf := &ModelFile{
-		PackageName: modelTable.OriginTblName + "_model",
+		PackageName: ModelPackageGet(modelTable.OriginTblName, tablePrefix, packagePrefix),
 		ModelTable:  modelTable,
 	}
-	//fmt.Printf("%+v\n", modelTable)
+	//	fmt.Printf("%+v\n", modelTable)
 	return modelCodeGen(mf)
 }

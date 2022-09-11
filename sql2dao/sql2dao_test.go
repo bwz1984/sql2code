@@ -26,7 +26,7 @@ func TestCrudTmpFile(t *testing.T) {
 }
 
 func TestSQL2Dao(t *testing.T) {
-	sql := "CREATE TABLE `student` (" +
+	sql := "CREATE TABLE `t_student` (" +
 		"`id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '主键ID'," +
 		"`age` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '年龄'," +
 		"`height` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '身高'," +
@@ -34,7 +34,7 @@ func TestSQL2Dao(t *testing.T) {
 		"KEY `age` (`age`)" +
 		") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='学生表';"
 
-	str, err := SQL2Dao(sql, "stu_db")
+	str, err := SQL2Dao(sql, "t_", "college", "stu_db")
 	assert.Nil(t, err)
 	fmt.Println(str)
 }

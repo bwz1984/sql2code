@@ -1,13 +1,13 @@
 package {{.PackageName}}
 
 // {{.Comment}}
-type {{.TblName}} struct {
+type {{.ModelName}} struct {
 {{- range .Rows}}
 	{{.Name}} {{.GoType}} {{.Tags}} // {{.Comment}}
 {{- end}}
 }
 
-func ({{.TblName}}) TableName() string {
+func ({{.ModelName}}) TableName() string {
 	return "{{.OriginTblName}}"
 }
 
