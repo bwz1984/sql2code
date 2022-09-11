@@ -5,7 +5,7 @@ generate the golang code from table creation statement
 * dao code of basic CRUD
 ## Download
 ```
-git@github.com:bwz1984/sql2code.git
+git clone git@github.com:bwz1984/sql2code.git
 ```
 ### Usage
 ```
@@ -23,8 +23,10 @@ Usage of this program:
   -tp string
         table prefix of table name to cut
 ```
-### Use
+### Example
 Use the terminal to enter the ```code sql2code``` directory
 ```
-go run main.go -if=xxx.sql -dbC
+$ go run main.go -if=./test/t_student.sql -dbcon=UserDB -tp="t_" -pp=user -op=3
+model code have been write to  ./output/user_student.go
+model code have been write to  ./output/user_student_service.go
 ```
