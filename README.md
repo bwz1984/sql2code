@@ -24,9 +24,10 @@ Usage of this program:
         table prefix of table name to cut
 ```
 ### Example
-Use the terminal to enter the ```code sql2code``` directory
+Use the terminal to enter the ``` sql2code``` directory
 ```
 $ go run main.go -if=./test/t_student.sql -dbcon=UserDB -tp="t_" -pp=user -op=3
 model code have been write to  ./output/user_student.go
 model code have been write to  ./output/user_student_service.go
 ```
+Enter the ``` ./output ``` directory to view the generated file
